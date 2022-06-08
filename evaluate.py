@@ -1,8 +1,7 @@
 import torch
 import torch.nn.functional as F
-from tqdm import tqdm
 
-from utils import multiclass_dice_coeff, dice_coeff
+from unet.utils.misc import multiclass_dice_coeff, dice_coeff
 
 
 def evaluate(net, dataloader, device):
@@ -11,9 +10,7 @@ def evaluate(net, dataloader, device):
     dice_score = 0
 
     # iterate over the validation set
-    print(('\n' + '%10s' * 3) % ('epoch', 'loss', 'gpu'))
-    progress_bar = tqdm(enumerate(dataloader), total=len(dataloader))
-    for idx, batch in progress_bar:
+    for idx, batch in enumerate(dataloader):
         image, mask_true = batch['image'], batch['mask']
         # move images and labels to correct device and type
         image = image.to(device=device, dtype=torch.float32)
@@ -35,9 +32,9 @@ def evaluate(net, dataloader, device):
                 dice_score += multiclass_dice_coeff(mask_pred[:, 1:, ...], mask_true[:, 1:, ...],
                                                     reduce_batch_first=False)
 
-        mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
-        s = ('%10s' + '%10.4g' + '%10s') % ('%g/%g' % (idx, num_val_batches), dice_score, mem)
-        progress_bar.set_description(s)
+        if idx % 10 == 0:
+            mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
+            print(f'Evaluating [{idx:>4d}/{len(dataloader)}] Mem: {mem}')
 
     net.train()
 

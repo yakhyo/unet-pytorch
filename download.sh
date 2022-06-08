@@ -16,7 +16,8 @@ pip install kaggle --upgrade
 
 kaggle competitions download -c carvana-image-masking-challenge -f train_hq.zip
 unzip train_hq.zip
-mv train_hq/* data/imgs/
+mkdir data
+mv train_hq/* data/images/
 rm -d train_hq
 rm train_hq.zip
 

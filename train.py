@@ -1,19 +1,17 @@
-import argparse
-import logging
 import os
+import argparse
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import wandb
-from torch import optim
 from torch.utils.data import DataLoader, random_split
-from tqdm import tqdm
 
-from dataset import Dataset
-from utils import dice_loss
 from evaluate import evaluate
-from unet import UNet
+
+from unet.models import UNet
+from unet.optim import RMSprop
+from unet.loss import CrossEntropyLoss
+from unet.scheduler import PlateauLRScheduler
+from unet.utils import Dataset, dice_loss
 
 
 def train_net(net,
@@ -23,8 +21,9 @@ def train_net(net,
               learning_rate: float = 1e-5,
               val_percent: float = 0.1,
               save_checkpoint: bool = True,
-              img_scale: float = 0.5,
               amp: bool = False):
+    os.makedirs('weights', exist_ok=True)
+
     # 1. Create dataset
     dataset = Dataset(root='./data', image_size=512)
 
@@ -49,19 +48,17 @@ def train_net(net,
                              )
 
     # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
-    optimizer = optim.RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
+    optimizer = RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
+    scheduler = PlateauLRScheduler(optimizer, mode='max', patience_t=2)  # goal: maximize Dice score
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
-    criterion = nn.CrossEntropyLoss()
+    criterion = CrossEntropyLoss()
     global_step = 0
 
     # 5. Begin training
     for epoch in range(1, epochs + 1):
         net.train()
         epoch_loss = 0
-        print(('\n' + '%10s' * 3) % ('epoch', 'loss', 'gpu'))
-        progress_bar = tqdm(enumerate(train_loader), total=len(train_data))
-        for idx, batch in progress_bar:
+        for idx, batch in enumerate(train_loader):
             images = batch['image']
             true_masks = batch['mask']
 
@@ -84,16 +81,15 @@ def train_net(net,
             # pbar.update(images.shape[0])
             global_step += 1
             epoch_loss += loss.item()
-
-            mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
-            s = ('%10s' + '%10.4g' + '%10s') % ('%g/%g' % (epoch, epochs), loss.item(), mem)
-            progress_bar.set_description(s)
+            if idx % 10 == 0:
+                mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
+                print(f'Epoch: {epoch}/{epochs} [{idx:>4d}/{len(train_loader)}] Loss: {loss.item():>4f} Mem: {mem}')
 
         val_score = evaluate(net, test_loader, device)
-        scheduler.step(val_score)
+        print("Val score:", val_score.item())
+        scheduler.step(epoch)
 
         if save_checkpoint:
-            os.makedirs('checkpoints', exist_ok=True)
             torch.save(net.state_dict(), f'checkpoints/checkpoint_epoch{epoch}.pth')
 
 
@@ -117,29 +113,18 @@ def get_args():
 if __name__ == '__main__':
     args = get_args()
 
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    logging.info(f'Using device {device}')
-
-    # Change here to adapt to your data
-    # n_channels=3 for RGB images
-    # n_classes is the number of probabilities you want to get per pixel
     net = UNet(in_channels=3, out_channels=args.classes)
 
     if args.load:
         net.load_state_dict(torch.load(args.load, map_location=device))
 
     net.to(device=device)
-    try:
-        train_net(net=net,
-                  epochs=args.epochs,
-                  batch_size=args.batch_size,
-                  learning_rate=args.lr,
-                  device=device,
-                  img_scale=args.scale,
-                  val_percent=args.val / 100,
-                  amp=args.amp)
-    except KeyboardInterrupt:
-        torch.save(net.state_dict(), 'INTERRUPTED.pth')
-        logging.info('Saved interrupt')
-        raise
+    train_net(net=net,
+              epochs=args.epochs,
+              batch_size=args.batch_size,
+              learning_rate=args.lr,
+              device=device,
+              val_percent=args.val / 100,
+              amp=args.amp)
+

@@ -8,9 +8,9 @@ import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
 
-from dataset import Dataset
+from unet.utils.dataset import Dataset
 from unet import UNet
-from utils import plot_img_and_mask
+from unet.utils.misc import plot_img_and_mask
 
 
 def predict_img(net,
@@ -18,14 +18,15 @@ def predict_img(net,
                 device,
                 out_threshold=0.5):
     net.eval()
-    image = torch.from_numpy(Dataset.preprocess(full_img, is_mask=False))
+    image, _ = Dataset.resize_pil(full_img, full_img,  image_size=512)
+    image = torch.from_numpy(Dataset.preprocess(image, is_mask=False))
     image = image.unsqueeze(0)
     image = image.to(device=device, dtype=torch.float32)
 
     with torch.no_grad():
         output = net(image)
 
-        if net.n_classes > 1:
+        if net.out_channels > 1:
             probs = F.softmax(output, dim=1)[0]
         else:
             probs = torch.sigmoid(output)[0]
@@ -41,7 +42,7 @@ def predict_img(net,
     if net.out_channels == 1:
         return (full_mask > out_threshold).numpy()
     else:
-        return F.one_hot(full_mask.argmax(dim=0), net.n_classes).permute(2, 0, 1).numpy()
+        return F.one_hot(full_mask.argmax(dim=0), net.out_channels).permute(2, 0, 1).numpy()
 
 
 def get_args():
