@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
     for i, filename in enumerate([args.input]):
         image = Image.open(filename)
-        mask = predict_img(model=model, full_img=image, out_threshold=args.mask_threshold, device=device)
+        mask = predict_img(model=model.float(), full_img=image, out_threshold=args.mask_threshold, device=device)
 
         result = mask_to_image(mask)
         result.save(args.output)

@@ -1,5 +1,6 @@
 import os
 import argparse
+from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import torch
@@ -76,10 +77,10 @@ def train(args):
         print("Dice score:", val_score)
         scheduler.step(epoch)
         losses.append(epoch_loss)
-        torch.save(model.half().state_dict(), f"weights/last.pth")
+        torch.save(deepcopy(model).half().state_dict(), f"weights/last.pth")
         if best_score < val_score:
             best_score = max(best_score, val_score)
-            torch.save(model.half().state_dict(), f"weights/best.pth")
+            torch.save(deepcopy(model).half().state_dict(), f"weights/best.pth")
 
     plt.figure(figsize=(10, 7))
     plt.plot(losses, color="orange", label="Train Loss")
