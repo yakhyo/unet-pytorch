@@ -24,6 +24,7 @@ python train.py
 ```
 
 Epoch Loss Graph after 5 epochs (Not mean, sum):
+
 <div align="center">
 <img src="assets/loss_graph.png" width="70%">
 </div>
