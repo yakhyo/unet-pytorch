@@ -72,8 +72,8 @@ class Dataset(data.Dataset):
         scale = min(image_size / w, image_size / h)
 
         # resize image
-        image = cv2.resize(image, (int(w * scale), int(h * scale)), Image.BILINEAR)
-        mask = cv2.resize(mask, (int(w * scale), int(h * scale)), Image.BILINEAR)
+        image = cv2.resize(image, (int(w * scale), int(h * scale)), Image.BICUBIC)
+        mask = cv2.resize(mask, (int(w * scale), int(h * scale)), Image.NEAREST)
 
         # pad size
         delta_w = image_size - int(w * scale)

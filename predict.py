@@ -1,5 +1,4 @@
 import argparse
-import logging
 import os
 
 import numpy as np
@@ -8,9 +7,9 @@ import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
 
-from unet.utils.dataset import Dataset
-from unet import UNet
-from unet.utils.misc import plot_img_and_mask
+from unet.utils import Dataset
+from unet.models import UNet
+from unet.utils import plot_img_and_mask
 
 
 def predict_img(net,
@@ -18,7 +17,7 @@ def predict_img(net,
                 device,
                 out_threshold=0.5):
     net.eval()
-    image, _ = Dataset.resize_pil(full_img, full_img,  image_size=512)
+    image, _ = Dataset.resize_pil(full_img, full_img, image_size=512)
     image = torch.from_numpy(Dataset.preprocess(image, is_mask=False))
     image = image.unsqueeze(0)
     image = image.to(device=device, dtype=torch.float32)
@@ -33,7 +32,6 @@ def predict_img(net,
 
         transform = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.Resize((full_img.size[1], full_img.size[0])),
             transforms.ToTensor()
         ])
 
@@ -47,7 +45,7 @@ def predict_img(net,
 
 def get_args():
     parser = argparse.ArgumentParser(description='Predict masks from input images')
-    parser.add_argument('--model', default='checkpoints/checkpoint_epoch5.pth', help='Model path')
+    parser.add_argument('--model', default='weights/checkpoint_epoch5.pth', help='Model path')
     parser.add_argument('--input', '-i', metavar='INPUT', nargs='+', help='Filenames of input images', required=True)
     parser.add_argument('--output', '-o', metavar='OUTPUT', nargs='+', help='Filenames of output images')
     parser.add_argument('--viz', '-v', action='store_true', help='Visualize the images as they are processed')
@@ -81,16 +79,11 @@ if __name__ == '__main__':
     net = UNet(in_channels=3, out_channels=2)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    logging.info(f'Loading model {args.model}')
-    logging.info(f'Using device {device}')
 
     net.to(device=device)
     net.load_state_dict(torch.load(args.model, map_location=device))
 
-    logging.info('Model loaded!')
-
     for i, filename in enumerate(in_files):
-        logging.info(f'\nPredicting image {filename} ...')
         image = Image.open(filename)
 
         mask = predict_img(net=net,
@@ -102,8 +95,6 @@ if __name__ == '__main__':
             out_filename = out_files[i]
             result = mask_to_image(mask)
             result.save(out_filename)
-            logging.info(f'Mask saved to {out_filename}')
-
+        image, _ = Dataset.resize_pil(image, image, image_size=512)
         if args.viz:
-            logging.info(f'Visualizing results for image {filename}, close to continue...')
             plot_img_and_mask(image, mask)

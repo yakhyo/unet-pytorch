@@ -33,26 +33,14 @@ def train_net(net,
     train_data, test_data = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
 
     # 3. Create data loaders
-    train_loader = DataLoader(train_data,
-                              batch_size=batch_size,
-                              num_workers=8,
-                              shuffle=True,
-                              pin_memory=True,
-                              )
-    test_loader = DataLoader(test_data,
-                             batch_size=batch_size,
-                             num_workers=8,
-                             shuffle=False,
-                             pin_memory=True,
-                             drop_last=True,
-                             )
+    train_loader = DataLoader(train_data, batch_size=batch_size, num_workers=8, shuffle=True, pin_memory=True)
+    test_loader = DataLoader(test_data, batch_size=batch_size, num_workers=8, drop_last=True, pin_memory=True)
 
     # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
     optimizer = RMSprop(net.parameters(), lr=learning_rate, weight_decay=1e-8, momentum=0.9)
     scheduler = PlateauLRScheduler(optimizer, mode='max', patience_t=2)  # goal: maximize Dice score
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
     criterion = CrossEntropyLoss()
-    global_step = 0
 
     # 5. Begin training
     for epoch in range(1, epochs + 1):
@@ -68,29 +56,26 @@ def train_net(net,
             with torch.cuda.amp.autocast(enabled=amp):
                 masks_pred = net(images)
                 loss = criterion(masks_pred, true_masks)
-                dice = dice_loss(F.softmax(masks_pred, dim=1).float(),
-                                 F.one_hot(true_masks, net.out_channels).permute(0, 3, 1, 2).float(),
-                                 multiclass=True)
-                loss += dice
+                loss += dice_loss(F.softmax(masks_pred, dim=1).float(),
+                                  F.one_hot(true_masks, net.out_channels).permute(0, 3, 1, 2).float(),
+                                  multiclass=True)
 
             optimizer.zero_grad(set_to_none=True)
             grad_scaler.scale(loss).backward()
             grad_scaler.step(optimizer)
             grad_scaler.update()
 
-            # pbar.update(images.shape[0])
-            global_step += 1
             epoch_loss += loss.item()
             if idx % 10 == 0:
                 mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
                 print(f'Epoch: {epoch}/{epochs} [{idx:>4d}/{len(train_loader)}] Loss: {loss.item():>4f} Mem: {mem}')
 
         val_score = evaluate(net, test_loader, device)
-        print("Val score:", val_score.item())
+        print("Dice score:", val_score.item())
         scheduler.step(epoch)
 
         if save_checkpoint:
-            torch.save(net.state_dict(), f'checkpoints/checkpoint_epoch{epoch}.pth')
+            torch.save(net.state_dict(), f'weights/checkpoint_epoch{epoch}.pth')
 
 
 def get_args():
@@ -127,4 +112,3 @@ if __name__ == '__main__':
               device=device,
               val_percent=args.val / 100,
               amp=args.amp)
-
