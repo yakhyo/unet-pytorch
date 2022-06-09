@@ -1,6 +1,7 @@
 import os
 import argparse
 
+import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
@@ -42,6 +43,7 @@ def train(args):
 
     # 5. Begin training
     best_score = 0
+    losses = []
     for epoch in range(1, args.epochs + 1):
         model.train()
         epoch_loss = 0
@@ -73,10 +75,15 @@ def train(args):
         val_score = evaluate(model, test_loader, device)
         print("Dice score:", val_score)
         scheduler.step(epoch)
+        losses.append(epoch_loss)
         torch.save(model.half().state_dict(), f"weights/last.pth")
         if best_score < val_score:
             best_score = max(best_score, val_score)
             torch.save(model.half().state_dict(), f"weights/best.pth")
+
+    plt.figure(figsize=(10, 7))
+    plt.plot(losses, color="orange", label="Train Loss")
+    plt.show()
 
 
 def evaluate(model, dataloader, device):
