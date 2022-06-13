@@ -1,4 +1,4 @@
-#!/bin/bash
+!/bin/bash
 
 if [[ ! -f ~/.kaggle/kaggle.json ]]; then
   echo -n "Kaggle username: "
@@ -14,9 +14,14 @@ fi
 
 pip install kaggle --upgrade
 
+# creating folders
+mkdir data
+mkdir data/images
+mkdir data/masks
+
+# downloading images and masks then moving to the created forlders
 kaggle competitions download -c carvana-image-masking-challenge -f train_hq.zip
 unzip train_hq.zip
-mkdir data
 mv train_hq/* data/images/
 rm -d train_hq
 rm train_hq.zip
