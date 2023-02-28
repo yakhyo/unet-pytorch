@@ -8,11 +8,10 @@ from PIL import Image, ImageOps
 from torch.utils import data
 
 
-class Dataset(data.Dataset):
-    def __init__(self, root, image_size=512, transforms=None, mask_suffix="_mask"):
+class Carvana(data.Dataset):
+    def __init__(self, root, image_size=512, mask_suffix="_mask"):
         self.root = root
         self.image_size = image_size
-        self.transforms = transforms
         self.mask_suffix = mask_suffix
         self.filenames = [os.path.splitext(filename)[0] for filename in os.listdir(os.path.join(self.root, "images"))]
         if not self.filenames:
@@ -32,9 +31,7 @@ class Dataset(data.Dataset):
         image = Image.open(image_path)
         mask = Image.open(mask_path)
 
-        assert (
-                image.size == mask.size
-        ), f"Image and mask {filename} should be the same size, but are {image.size} and {mask.size}"
+        assert image.size == mask.size, f"`image`: {image.size} and `mask`: {mask.size} are not the same"
 
         # resize
         image, mask = self.resize_pil(image, mask, image_size=self.image_size)
@@ -43,10 +40,7 @@ class Dataset(data.Dataset):
         image = self.preprocess(image, is_mask=False)
         mask = self.preprocess(mask, is_mask=True)
 
-        return {
-            "image": torch.tensor(image),
-            "mask": torch.tensor(mask)
-        }
+        return {"image": torch.tensor(image), "mask": torch.tensor(mask)}
 
     @staticmethod
     def resize_pil(image, mask, image_size):

@@ -10,22 +10,34 @@ from torch import nn, optim
 from torch.utils.data import DataLoader, random_split
 
 from unet.models import UNet
-from unet.utils.dataset import Dataset
-from unet.utils.misc import dice_coeff, dice_loss, multiclass_dice_coeff
+from unet.utils.dataset import Carvana
+from unet.utils.general import dice_coeff, dice_loss, multiclass_dice_coeff, strip_optimizers
 
 
 def train(args):
+    image_size, epochs, batch_size, weights = args.image_size, args.epochs, args.batch_size, args.weights
     os.makedirs("weights", exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = UNet(in_channels=3, out_channels=args.classes)
-    if args.load:
-        model.load_state_dict(torch.load(args.load, map_location=device))
+
+    optimizer = optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=1e-8, momentum=0.9, foreach=True)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=5)  # goal: maximize Dice score
+    grad_scaler = torch.cuda.amp.GradScaler(enabled=args.amp)
+
+    criterion = nn.CrossEntropyLoss()
+    start_epoch = 0
+    if weights.endswith(".pt"):
+        ckpt = torch.load(args.weights, map_location="cpu")
+        model.load_state_dict(ckpt["model"].float().state_dict())
+        # TODO: load the optimizer to GPU is issue?
+        # optimizer.load_state_dict(ckpt['optimizer'])
+        start_epoch = ckpt["epoch"] + 1
 
     model.to(device=device)
 
     # 1. Create dataset
-    dataset = Dataset(root="./data", image_size=512)
+    dataset = Carvana(root="./data", image_size=args.image_size)
 
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * 0.1)
@@ -37,15 +49,11 @@ def train(args):
     test_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=8, drop_last=True, pin_memory=True)
 
     # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
-    optimizer = optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=1e-8, momentum=0.9, foreach=True)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=5)  # goal: maximize Dice score
-    grad_scaler = torch.cuda.amp.GradScaler(enabled=args.amp)
-    criterion = nn.CrossEntropyLoss()
 
     # 5. Begin training
     best_score = 0
     losses = []
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         model.train()
         epoch_loss = 0
         for idx, batch in enumerate(train_loader):
@@ -80,10 +88,13 @@ def train(args):
         print("Dice score:", val_score)
         scheduler.step(epoch)
         losses.append(epoch_loss)
-        torch.save(deepcopy(model).half().state_dict(), f"weights/last.pth")
+        ckpt = {"epoch": epoch, "optimizer": optimizer.state_dict(), "model": deepcopy(model).half()}
+        torch.save(ckpt, f"weights/last.ckpt")
         if best_score < val_score:
             best_score = max(best_score, val_score)
-            torch.save(deepcopy(model).half().state_dict(), f"weights/best.pth")
+            torch.save(ckpt, f"weights/best.ckpt")
+
+    strip_optimizers(weights)
 
     plt.figure(figsize=(10, 7))
     plt.plot(losses, color="orange", label="Train Loss")
@@ -134,10 +145,11 @@ def evaluate(model, dataloader, device):
 
 def get_args():
     parser = argparse.ArgumentParser(description="UNet training code")
-    parser.add_argument("--epochs", type=int, default=5, help="Number of epochs")
-    parser.add_argument("--batch-size", type=int, default=12, help="Batch size")
-    parser.add_argument("--lr", type=float, default=1e-5, help="Learning rate")
-    parser.add_argument("--load", type=str, default=False, help="Load model from a .pth file")
+    parser.add_argument("--image_size", type=int, default=512, help="Input image size, default: 512")
+    parser.add_argument("--epochs", type=int, default=5, help="Number of epochs, default: 5")
+    parser.add_argument("--batch-size", type=int, default=12, help="Batch size, default: 12")
+    parser.add_argument("--lr", type=float, default=1e-5, help="Learning rate, default: 1e-5")
+    parser.add_argument("--weights", type=str, default="", help="Pretrained model, default: None")
     parser.add_argument("--amp", action="store_true", help="Use mixed precision")
     parser.add_argument("--classes", type=int, default=2, help="Number of classes")
 
