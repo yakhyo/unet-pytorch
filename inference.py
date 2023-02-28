@@ -1,13 +1,14 @@
 import argparse
+
 import numpy as np
-from PIL import Image, ImageOps
 
 import torch
 import torch.nn.functional as F
+from PIL import Image, ImageOps
+from unet.models.unet import UNet
 
-from unet.utils import Dataset
-from unet.models import UNet
-from unet.utils import plot_img_and_mask
+from unet.utils.dataset import Dataset
+from unet.utils.misc import plot_img_and_mask
 
 
 def resize(image, image_size=512):
@@ -71,10 +72,10 @@ def mask_to_image(mask: np.ndarray):
         return Image.fromarray((np.argmax(mask, axis=0) * 255 / mask.shape[0]).astype(np.uint8))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = get_args()
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = UNet(in_channels=3, out_channels=2)
     model.to(device=device)

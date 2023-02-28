@@ -1,20 +1,22 @@
 import os
+
 import cv2
 import numpy as np
-from PIL import Image, ImageOps
 
 import torch
+from PIL import Image, ImageOps
 from torch.utils import data
 
 
 class Dataset(data.Dataset):
-
     def __init__(self, root, image_size=512, transforms=None, mask_suffix="_mask"):
         self.root = root
         self.image_size = image_size
         self.transforms = transforms
         self.mask_suffix = mask_suffix
         self.filenames = [os.path.splitext(filename)[0] for filename in os.listdir(os.path.join(self.root, "images"))]
+        if not self.filenames:
+            raise FileNotFoundError(f"Files not found in {root}")
 
     def __len__(self):
         return len(self.filenames)
@@ -30,7 +32,9 @@ class Dataset(data.Dataset):
         image = Image.open(image_path)
         mask = Image.open(mask_path)
 
-        assert image.size == mask.size, f'Image and mask {filename} should be the same size, but are {image.size} and {mask.size}'
+        assert (
+                image.size == mask.size
+        ), f"Image and mask {filename} should be the same size, but are {image.size} and {mask.size}"
 
         # resize
         image, mask = self.resize_pil(image, mask, image_size=self.image_size)
@@ -39,11 +43,10 @@ class Dataset(data.Dataset):
         image = self.preprocess(image, is_mask=False)
         mask = self.preprocess(mask, is_mask=True)
 
-        # to tensor
-        image = torch.from_numpy(image)
-        mask = torch.from_numpy(mask)
-
-        return {'image': image, 'mask': mask}
+        return {
+            "image": torch.tensor(image),
+            "mask": torch.tensor(mask)
+        }
 
     @staticmethod
     def resize_pil(image, mask, image_size):
@@ -101,14 +104,14 @@ class Dataset(data.Dataset):
         return img_ndarray
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test = Dataset("./data")
     iterable = iter(test)
     while True:
         pict = next(iterable)
-        pict = pict['image'].numpy()
+        pict = pict["image"].numpy()
         pict = pict.transpose((1, 2, 0))
 
-        cv2.imshow('Frame', pict)
-        if cv2.waitKey(0) & 0xFF == ord('q'):
+        cv2.imshow("Frame", pict)
+        if cv2.waitKey(0) & 0xFF == ord("q"):
             break

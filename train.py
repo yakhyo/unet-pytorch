@@ -1,17 +1,17 @@
-import os
 import argparse
+import os
 from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
+from torch import nn, optim
+
 from torch.utils.data import DataLoader, random_split
 
 from unet.models import UNet
-from unet.optim import RMSprop
-from unet.loss import CrossEntropyLoss
-from unet.scheduler import PlateauLRScheduler
-from unet.utils import Dataset, dice_loss, multiclass_dice_coeff, dice_coeff
+from unet.utils.dataset import Dataset
+from unet.utils.misc import dice_coeff, dice_loss, multiclass_dice_coeff
 
 
 def train(args):
@@ -37,10 +37,10 @@ def train(args):
     test_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=8, drop_last=True, pin_memory=True)
 
     # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
-    optimizer = RMSprop(model.parameters(), lr=args.lr, weight_decay=1e-8, momentum=0.9)
-    scheduler = PlateauLRScheduler(optimizer, mode='max', patience_t=2)  # goal: maximize Dice score
+    optimizer = optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=1e-8, momentum=0.9, foreach=True)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=5)  # goal: maximize Dice score
     grad_scaler = torch.cuda.amp.GradScaler(enabled=args.amp)
-    criterion = CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()
 
     # 5. Begin training
     best_score = 0
@@ -58,9 +58,11 @@ def train(args):
             with torch.cuda.amp.autocast(enabled=args.amp):
                 masks_pred = model(images)
                 loss = criterion(masks_pred, true_masks)
-                loss += dice_loss(F.softmax(masks_pred, dim=1).float(),
-                                  F.one_hot(true_masks, model.out_channels).permute(0, 3, 1, 2).float(),
-                                  multiclass=True)
+                loss += dice_loss(
+                    torch.softmax(masks_pred, dim=1).float(),
+                    F.one_hot(true_masks, model.out_channels).permute(0, 3, 1, 2).float(),
+                    multiclass=True,
+                )
 
             optimizer.zero_grad(set_to_none=True)
             grad_scaler.scale(loss).backward()
@@ -69,9 +71,10 @@ def train(args):
 
             epoch_loss += loss.item()
             if idx % 10 == 0:
-                mem = "%.3gG" % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
+                mem = "%.3gG" % (torch.cuda.memory_reserved() / 1e9 if torch.cuda.is_available() else 0)
                 print(
-                    f"Epoch: {epoch}/{args.epochs} [{idx:>4d}/{len(train_loader)}] Loss: {loss.item():>4f} Mem: {mem}")
+                    f"Epoch: {epoch}/{args.epochs} [{idx:>4d}/{len(train_loader)}] Loss: {loss.item():>4f} Mem: {mem}"
+                )
 
         val_score = evaluate(model, test_loader, device)
         print("Dice score:", val_score)
@@ -94,7 +97,7 @@ def evaluate(model, dataloader, device):
 
     # iterate over the validation set
     for idx, batch in enumerate(dataloader):
-        image, mask_true = batch['image'], batch['mask']
+        image, mask_true = batch["image"], batch["mask"]
         # move images and labels to correct device and type
         image = image.to(device=device, dtype=torch.float32)
         mask_true = mask_true.to(device=device, dtype=torch.long)
@@ -112,12 +115,13 @@ def evaluate(model, dataloader, device):
             else:
                 mask_pred = F.one_hot(mask_pred.argmax(dim=1), model.out_channels).permute(0, 3, 1, 2).float()
                 # compute the Dice score, ignoring background
-                dice_score += multiclass_dice_coeff(mask_pred[:, 1:, ...], mask_true[:, 1:, ...],
-                                                    reduce_batch_first=False)
+                dice_score += multiclass_dice_coeff(
+                    mask_pred[:, 1:, ...], mask_true[:, 1:, ...], reduce_batch_first=False
+                )
 
         if idx % 10 == 0:
-            mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
-            print(f'Evaluating [{idx:>4d}/{len(dataloader)}] Mem: {mem}')
+            mem = "%.3gG" % (torch.cuda.memory_reserved() / 1e9 if torch.cuda.is_available() else 0)
+            print(f"Evaluating [{idx:>4d}/{len(dataloader)}] Mem: {mem}")
 
     model.train()
 
@@ -131,7 +135,7 @@ def evaluate(model, dataloader, device):
 def get_args():
     parser = argparse.ArgumentParser(description="UNet training code")
     parser.add_argument("--epochs", type=int, default=5, help="Number of epochs")
-    parser.add_argument("--batch-size", type=int, default=1, help="Batch size")
+    parser.add_argument("--batch-size", type=int, default=12, help="Batch size")
     parser.add_argument("--lr", type=float, default=1e-5, help="Learning rate")
     parser.add_argument("--load", type=str, default=False, help="Load model from a .pth file")
     parser.add_argument("--amp", action="store_true", help="Use mixed precision")
@@ -140,7 +144,7 @@ def get_args():
     return parser.parse_args()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     params = get_args()
 
     train(params)
