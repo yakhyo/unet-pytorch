@@ -1,14 +1,16 @@
+# TODO: Needs to be fixed
 import argparse
 
-import numpy as np
+import cv2
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image, ImageOps
-from unet.models.unet import UNet
+from unet.models import UNet
 
-from unet.utils.dataset import Dataset
-from unet.utils.misc import plot_img_and_mask
+from unet.utils.dataset import Carvana
+from unet.utils.general import plot_img_and_mask
 
 
 def resize(image, image_size=512):
@@ -33,7 +35,7 @@ def resize(image, image_size=512):
 def predict_img(model, full_img, device, out_threshold=0.5):
     model.eval()
     image = resize(full_img)
-    image = torch.from_numpy(Dataset.preprocess(image, is_mask=False))
+    image = torch.from_numpy(Carvana.preprocess(image, is_mask=False))
     image = image.unsqueeze(0)
     image = image.to(device=device, dtype=torch.float32)
 
@@ -55,7 +57,7 @@ def predict_img(model, full_img, device, out_threshold=0.5):
 
 def get_args():
     parser = argparse.ArgumentParser(description="Predict masks from input images")
-    parser.add_argument("--model", default="weights/last.pth", help="Model path")
+    parser.add_argument("--weights", default="weights/best.pt", help="Model path")
     parser.add_argument("--input", required=True, help="Filenames of input images")
     parser.add_argument("--output", default="output.jpg", help="Filenames of output images")
     parser.add_argument("--viz", action="store_true", help="Visualize the images as they are processed")
@@ -78,8 +80,9 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = UNet(in_channels=3, out_channels=2)
+    ckpt = torch.load(args.weights, map_location=device)["model"].float().state_dict()
+    model.load_state_dict(ckpt)
     model.to(device=device)
-    model.load_state_dict(torch.load(args.model, map_location=device))
 
     for i, filename in enumerate([args.input]):
         image = Image.open(filename)
