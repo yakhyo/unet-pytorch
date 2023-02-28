@@ -6,10 +6,10 @@ import torch
 
 
 def dice_coeff(
-    input: torch.Tensor,
-    target: torch.Tensor,
-    reduce_batch_first: Optional[bool] = False,
-    epsilon: Optional[float] = 1e-6,
+        input: torch.Tensor,
+        target: torch.Tensor,
+        reduce_batch_first: Optional[bool] = False,
+        epsilon: Optional[float] = 1e-6,
 ):
     # Average of Dice coefficient for all batches, or for a single mask
     assert input.size() == target.size(), f"`input`: {input.size()} and `target`: {target.size()} has different size"
@@ -26,10 +26,10 @@ def dice_coeff(
 
 
 def multiclass_dice_coeff(
-    input: torch.Tensor,
-    target: torch.Tensor,
-    reduce_batch_first: Optional[bool] = False,
-    epsilon: Optional[float] = 1e-6,
+        input: torch.Tensor,
+        target: torch.Tensor,
+        reduce_batch_first: Optional[bool] = False,
+        epsilon: Optional[float] = 1e-6,
 ):
     # Average of Dice coefficient for all classes
     return dice_coeff(input.flatten(0, 1), target.flatten(0, 1), reduce_batch_first, epsilon)

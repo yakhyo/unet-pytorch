@@ -14,16 +14,16 @@ class Conv(nn.Module):
     """Convolutional Block"""
 
     def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: Optional[int] = 1,
-        stride: Optional[int] = 1,
-        padding: Optional[int] = None,
-        groups: Optional[int] = 1,
-        dilation: Optional[int] = 1,
-        bias: Optional[bool] = False,
-        act: Optional[bool] = True,
+            self,
+            in_channels: int,
+            out_channels: int,
+            kernel_size: Optional[int] = 1,
+            stride: Optional[int] = 1,
+            padding: Optional[int] = None,
+            groups: Optional[int] = 1,
+            dilation: Optional[int] = 1,
+            bias: Optional[bool] = False,
+            act: Optional[bool] = True,
     ) -> None:
         super().__init__()
         self.conv = nn.Conv2d(
@@ -50,17 +50,17 @@ class DoubleConv(nn.Module):
     """Double Convolutional Block"""
 
     def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        mid_channels: Optional[int] = None,
-        kernel_size: Optional[int] = 3,
-        stride: Optional[int] = 1,
-        padding: Optional[int] = 1,
-        dilation: Optional[int] = 1,
-        groups: Optional[int] = 1,
-        bias: Optional[bool] = False,
-        act: Optional[bool] = True,
+            self,
+            in_channels: int,
+            out_channels: int,
+            mid_channels: Optional[int] = None,
+            kernel_size: Optional[int] = 3,
+            stride: Optional[int] = 1,
+            padding: Optional[int] = 1,
+            dilation: Optional[int] = 1,
+            groups: Optional[int] = 1,
+            bias: Optional[bool] = False,
+            act: Optional[bool] = True,
     ) -> None:
         super().__init__()
         if not mid_channels:
