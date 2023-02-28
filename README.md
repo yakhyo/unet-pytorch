@@ -5,11 +5,7 @@
 <img src="assets/mask.gif" width="45%">
 </div>
 
-### Update
-
-- 2022.06.09:
-    - Trained weights uploaded under `last.pth` name in `weights` folder. Weight saved as `half()` tensor. Convert it
-      to `.float()` tensor before using.
+## Getting Started
 
 ### Dataset
 
@@ -17,10 +13,14 @@
 the model.
 To download the dataset run the `download.sh` file.
 
+**Note:** Please download `kaggle.json` file first from associated kaggle account then save it under the `/home/username/.kaggle/kaggle.json` (in linux)
+
 ### Train
 
 ```commandline
-python train.py
+git clone git@github.com:yakhyo/UNet-pt.git
+cd UNet-pt
+python3 train.py
 ```
 
 Epoch Loss Graph after 5 epochs (Not mean, sum):
