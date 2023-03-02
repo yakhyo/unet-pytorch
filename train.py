@@ -6,16 +6,18 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch import nn, optim
-
+from tqdm import tqdm
 from torch.utils.data import DataLoader, random_split
 
 from unet.models import UNet
 from unet.utils.dataset import Carvana
-from unet.utils.general import dice_coeff, dice_loss, multiclass_dice_coeff, strip_optimizers
+from unet.utils.general import strip_optimizers, plot_img_and_mask
+from unet.utils.loss import DiceLoss, Loss
 
 
 def train(args):
     image_size, epochs, batch_size, weights = args.image_size, args.epochs, args.batch_size, args.weights
+    best, last = f"{args.save_dir}/best.pt", f"{args.save_dir}/last.pt"
     os.makedirs("weights", exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -25,14 +27,20 @@ def train(args):
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=5)  # goal: maximize Dice score
     grad_scaler = torch.cuda.amp.GradScaler(enabled=args.amp)
 
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    # criterion = DiceLoss(model.out_channels)
+    criterion = Loss()
     start_epoch = 0
+
     if weights.endswith(".pt"):
+        print(f"[INFO] Loading weights from {weights}...")
         ckpt = torch.load(args.weights, map_location="cpu")
         model.load_state_dict(ckpt["model"].float().state_dict())
         # TODO: load the optimizer to GPU is issue?
         # optimizer.load_state_dict(ckpt['optimizer'])
-        start_epoch = ckpt["epoch"] + 1
+        if ckpt["epoch"]:
+            start_epoch = ckpt["epoch"] + 1
+        print("[INFO] Loaded successfully")
 
     model.to(device=device)
 
@@ -56,7 +64,9 @@ def train(args):
     for epoch in range(start_epoch, args.epochs + 1):
         model.train()
         epoch_loss = 0
-        for idx, batch in enumerate(train_loader):
+        print(('\n' + '%20s' * 5) % ('EPOCH', 'Cross Entropy Loss', 'Dice Loss', 'Total Loss', 'GPU'))
+        progress_bar = tqdm(enumerate(train_loader), total=len(train_loader))
+        for idx, batch in progress_bar:
             images = batch["image"]
             true_masks = batch["mask"]
 
@@ -65,12 +75,7 @@ def train(args):
 
             with torch.cuda.amp.autocast(enabled=args.amp):
                 masks_pred = model(images)
-                loss = criterion(masks_pred, true_masks)
-                loss += dice_loss(
-                    torch.softmax(masks_pred, dim=1).float(),
-                    F.one_hot(true_masks, model.out_channels).permute(0, 3, 1, 2).float(),
-                    multiclass=True,
-                )
+                loss, losses = criterion(masks_pred, true_masks)
 
             optimizer.zero_grad(set_to_none=True)
             grad_scaler.scale(loss).backward()
@@ -78,27 +83,20 @@ def train(args):
             grad_scaler.update()
 
             epoch_loss += loss.item()
-            if idx % 10 == 0:
-                mem = "%.3gG" % (torch.cuda.memory_reserved() / 1e9 if torch.cuda.is_available() else 0)
-                print(
-                    f"Epoch: {epoch}/{args.epochs} [{idx:>4d}/{len(train_loader)}] Loss: {loss.item():>4f} Mem: {mem}"
-                )
-
+            mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
+            s = ('%20s' + '%20.4g' + '%20.4g' + '%20.4g' + '%20s') % (
+                '%g/%g' % (epoch + 1, args.epochs), losses['ce'], losses['dl'], loss, mem)
+            progress_bar.set_description(s)
         val_score = evaluate(model, test_loader, device)
         print("Dice score:", val_score)
         scheduler.step(epoch)
-        losses.append(epoch_loss)
         ckpt = {"epoch": epoch, "optimizer": optimizer.state_dict(), "model": deepcopy(model).half()}
-        torch.save(ckpt, f"weights/last.ckpt")
+        torch.save(ckpt, last)
         if best_score < val_score:
             best_score = max(best_score, val_score)
-            torch.save(ckpt, f"weights/best.ckpt")
-
-    strip_optimizers(weights)
-
-    plt.figure(figsize=(10, 7))
-    plt.plot(losses, color="orange", label="Train Loss")
-    plt.show()
+            torch.save(ckpt, best)
+    for f in best, last:
+        strip_optimizers(f)
 
 
 def evaluate(model, dataloader, device):
@@ -146,6 +144,7 @@ def evaluate(model, dataloader, device):
 def get_args():
     parser = argparse.ArgumentParser(description="UNet training code")
     parser.add_argument("--image_size", type=int, default=512, help="Input image size, default: 512")
+    parser.add_argument("--save-dir", type=str, default="weights", help="Directory to save weights")
     parser.add_argument("--epochs", type=int, default=5, help="Number of epochs, default: 5")
     parser.add_argument("--batch-size", type=int, default=12, help="Batch size, default: 12")
     parser.add_argument("--lr", type=float, default=1e-5, help="Learning rate, default: 1e-5")

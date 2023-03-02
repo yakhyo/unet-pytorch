@@ -1,44 +1,6 @@
 import os
-from typing import Optional
-
 import matplotlib.pyplot as plt
 import torch
-
-
-def dice_coeff(
-        input: torch.Tensor,
-        target: torch.Tensor,
-        reduce_batch_first: Optional[bool] = False,
-        epsilon: Optional[float] = 1e-6,
-):
-    # Average of Dice coefficient for all batches, or for a single mask
-    assert input.size() == target.size(), f"`input`: {input.size()} and `target`: {target.size()} has different size"
-    assert input.dim() == 3 or not reduce_batch_first
-
-    sum_dim = (-1, -2) if input.dim() == 2 or not reduce_batch_first else (-1, -2, -3)
-
-    inter = 2 * (input * target).sum(dim=sum_dim)
-    sets_sum = input.sum(dim=sum_dim) + target.sum(dim=sum_dim)
-    sets_sum = torch.where(sets_sum == 0, inter, sets_sum)
-
-    dice = (inter + epsilon) / (sets_sum + epsilon)
-    return dice.mean()
-
-
-def multiclass_dice_coeff(
-        input: torch.Tensor,
-        target: torch.Tensor,
-        reduce_batch_first: Optional[bool] = False,
-        epsilon: Optional[float] = 1e-6,
-):
-    # Average of Dice coefficient for all classes
-    return dice_coeff(input.flatten(0, 1), target.flatten(0, 1), reduce_batch_first, epsilon)
-
-
-def dice_loss(input: torch.Tensor, target: torch.Tensor, multiclass: Optional[bool] = False):
-    # Dice loss (objective to minimize) between 0 and 1
-    fn = multiclass_dice_coeff if multiclass else dice_coeff
-    return 1 - fn(input, target, reduce_batch_first=True)
 
 
 def plot_img_and_mask(img, mask):
@@ -57,7 +19,7 @@ def plot_img_and_mask(img, mask):
     plt.show()
 
 
-def strip_optimizers(f: str = "weights/last.ckpt"):
+def strip_optimizers(f: str):
     x = torch.load(f, map_location="cpu")
     for k in "optimizer", "epoch":
         x[k] = None
