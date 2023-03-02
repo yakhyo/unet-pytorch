@@ -1,4 +1,4 @@
-from typing import Optional, Union, Tuple, Any, Dict
+from typing import Any, Dict, Optional, Tuple, Union
 
 import torch
 from torch import nn
@@ -7,12 +7,14 @@ from torch.nn import functional as F
 
 class ActivationFunction:
     """Alias for activation function"""
+
     SOFTMAX = "softmax"
     SIGMOID = "sigmoid"
 
 
 class LossReduction:
     """Alias for loss reduction"""
+
     NONE = "none"
     MEAN = "mean"
     SUM = "sum"
@@ -23,7 +25,7 @@ class DiceLoss(nn.Module):
             self,
             epsilon: Optional[float] = 1e-5,
             activation: Union[ActivationFunction, str] = ActivationFunction.SOFTMAX,
-            reduction: Union[LossReduction, str] = LossReduction.MEAN
+            reduction: Union[LossReduction, str] = LossReduction.MEAN,
     ) -> None:
         super().__init__()
         self.epsilon = epsilon
@@ -66,8 +68,7 @@ class Loss(nn.Module):
             self,
             epsilon: Optional[float] = 1e-5,
             activation: Union[ActivationFunction, str] = ActivationFunction.SOFTMAX,
-            reduction: Union[LossReduction, str] = LossReduction.MEAN
-
+            reduction: Union[LossReduction, str] = LossReduction.MEAN,
     ) -> None:
         super().__init__()
         self.ce = nn.CrossEntropyLoss()

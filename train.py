@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from torch import nn, optim
-from tqdm import tqdm
 from torch.utils.data import DataLoader, random_split
+from tqdm import tqdm
 
 from unet.models import UNet
 from unet.utils.dataset import Carvana
-from unet.utils.general import strip_optimizers, plot_img_and_mask
+from unet.utils.general import plot_img_and_mask, strip_optimizers
 from unet.utils.loss import DiceLoss, Loss
 
 
@@ -64,7 +64,7 @@ def train(args):
     for epoch in range(start_epoch, args.epochs + 1):
         model.train()
         epoch_loss = 0
-        print(('\n' + '%20s' * 5) % ('EPOCH', 'Cross Entropy Loss', 'Dice Loss', 'Total Loss', 'GPU'))
+        print(("\n" + "%20s" * 5) % ("EPOCH", "Cross Entropy Loss", "Dice Loss", "Total Loss", "GPU"))
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader))
         for idx, batch in progress_bar:
             images = batch["image"]
@@ -83,9 +83,14 @@ def train(args):
             grad_scaler.update()
 
             epoch_loss += loss.item()
-            mem = '%.3gG' % (torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0)
-            s = ('%20s' + '%20.4g' + '%20.4g' + '%20.4g' + '%20s') % (
-                '%g/%g' % (epoch + 1, args.epochs), losses['ce'], losses['dl'], loss, mem)
+            mem = "%.3gG" % (torch.cuda.memory_reserved() / 1e9 if torch.cuda.is_available() else 0)
+            s = ("%20s" + "%20.4g" + "%20.4g" + "%20.4g" + "%20s") % (
+                "%g/%g" % (epoch + 1, args.epochs),
+                losses["ce"],
+                losses["dl"],
+                loss,
+                mem,
+            )
             progress_bar.set_description(s)
         val_score = evaluate(model, test_loader, device)
         print("Dice score:", val_score)
