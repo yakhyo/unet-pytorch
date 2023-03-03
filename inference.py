@@ -1,8 +1,6 @@
 # TODO: Needs to be fixed
 import argparse
 
-import cv2
-
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -32,7 +30,7 @@ def resize(image, image_size=512):
     return image
 
 
-def predict_img(model, full_img, device, out_threshold=0.5):
+def predict_img(model, full_img, device, conf_threshold=0.5):
     model.eval()
     image = resize(full_img)
     image = torch.from_numpy(Carvana.preprocess(image, is_mask=False))
@@ -41,18 +39,13 @@ def predict_img(model, full_img, device, out_threshold=0.5):
 
     with torch.no_grad():
         output = model(image)
-
+        output = F.interpolate(output.cpu(), (full_img.size[1], full_img.size[0]), mode='bilinear')
         if model.out_channels > 1:
-            probs = F.softmax(output, dim=1)[0]
+            mask = output.argmax(dim=1)
         else:
-            probs = torch.sigmoid(output)[0]
+            mask = torch.sigmoid(output) > conf_threshold
 
-        full_mask = probs.cpu().squeeze()
-
-    if model.out_channels == 1:
-        return (full_mask > out_threshold).numpy()
-    else:
-        return F.one_hot(full_mask.argmax(dim=0), model.out_channels).permute(2, 0, 1).numpy()
+    return mask[0].long().squeeze().numpy()
 
 
 def get_args():
@@ -62,7 +55,7 @@ def get_args():
     parser.add_argument("--output", default="output.jpg", help="Filenames of output images")
     parser.add_argument("--viz", action="store_true", help="Visualize the images as they are processed")
     parser.add_argument("--no-save", action="store_true", help="Do not save the output masks")
-    parser.add_argument("--mask-threshold", type=float, default=0.5, help="Mask threshold value")
+    parser.add_argument("--conf-threshold", type=float, default=0.5, help="Mask threshold value")
 
     return parser.parse_args()
 
@@ -86,11 +79,11 @@ if __name__ == "__main__":
 
     for i, filename in enumerate([args.input]):
         image = Image.open(filename)
-        mask = predict_img(model=model.float(), full_img=image, out_threshold=args.mask_threshold, device=device)
+        mask = predict_img(model=model.float(), full_img=image, conf_threshold=args.conf_threshold, device=device)
 
         result = mask_to_image(mask)
         result.save(args.output)
 
         if args.viz:
-            image = resize(image)
+            # image = resize(image)
             plot_img_and_mask(image, mask)

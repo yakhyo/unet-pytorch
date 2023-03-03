@@ -171,5 +171,5 @@ class UNet(nn.Module):
 if __name__ == "__main__":
     model = UNet(in_channels=3, out_channels=2)
     dummy = torch.randn(1, 3, 512, 512)
-    print(model(dummy).shape)
+    # print(model(dummy).shape)
     print(sum(p.numel() for p in model.parameters() if p.requires_grad))

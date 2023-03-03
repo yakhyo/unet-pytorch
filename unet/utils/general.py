@@ -22,9 +22,8 @@ def plot_img_and_mask(img, mask):
 
 def strip_optimizers(f: str):
     x = torch.load(f, map_location="cpu")
-    for k in "optimizer", "epoch":
-        x[k] = None
-
+    x["optimizer"] = None
+    x["epoch"] = -1
     x["model"].half()  # to FP16
     for p in x["model"].parameters():
         p.requires_grad = False
