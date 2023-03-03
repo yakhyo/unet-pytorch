@@ -2,17 +2,16 @@ import argparse
 import os
 from copy import deepcopy
 
-import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
-from torch import nn, optim
+from torch import optim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 
 from unet.models import UNet
 from unet.utils.dataset import Carvana
-from unet.utils.general import plot_img_and_mask, strip_optimizers
-from unet.utils.loss import DiceLoss, Loss
+from unet.utils.general import strip_optimizers
+from unet.utils.loss import DiceLoss, Loss, dice_coeff, multiclass_dice_coeff
 
 
 def train(args):
@@ -60,7 +59,6 @@ def train(args):
 
     # 5. Begin training
     best_score = 0
-    losses = []
     for epoch in range(start_epoch, args.epochs + 1):
         model.train()
         epoch_loss = 0
