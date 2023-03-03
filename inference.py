@@ -39,7 +39,7 @@ def predict_img(model, full_img, device, conf_threshold=0.5):
 
     with torch.no_grad():
         output = model(image)
-        output = F.interpolate(output.cpu(), (full_img.size[1], full_img.size[0]), mode='bilinear')
+        output = F.interpolate(output.cpu(), (full_img.size[1], full_img.size[0]), mode="bilinear")
         if model.out_channels > 1:
             mask = output.argmax(dim=1)
         else:

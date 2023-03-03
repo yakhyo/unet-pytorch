@@ -4,12 +4,12 @@ import os
 from copy import deepcopy
 
 import torch
+from evaluate import evaluate
 from torch import optim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 
 from unet.models import UNet
-from evaluate import evaluate
 from unet.utils.dataset import Carvana
 from unet.utils.loss import DiceCELoss
 
@@ -100,8 +100,9 @@ def train(opt, model, device):
 
             epoch_loss += loss.item()
             mem = f"{torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0:.3g}G"  # (GB)
-            progress_bar.set_description(("%12s" * 2 + "%12.4g" * 3) %
-                                         (f"{epoch + 1}/{opt.epochs}", mem, losses["ce"], losses["dl"], loss))
+            progress_bar.set_description(
+                ("%12s" * 2 + "%12.4g" * 3) % (f"{epoch + 1}/{opt.epochs}", mem, losses["ce"], losses["dl"], loss)
+            )
 
         val_score = evaluate(model, test_loader, device)
         print("Dice score:", val_score)
@@ -110,7 +111,7 @@ def train(opt, model, device):
             "epoch": epoch,
             "best_score": best_score,
             "model": deepcopy(model).half(),
-            "optimizer": optimizer.state_dict()
+            "optimizer": optimizer.state_dict(),
         }
         torch.save(ckpt, last)
         if best_score < val_score:
@@ -135,7 +136,7 @@ def parse_opt():
 
 
 def main(opt):
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(f"Device: {device}")
 
