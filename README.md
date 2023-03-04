@@ -11,7 +11,7 @@ git clone git@github.com:yakhyo/UNet-pt.git
 cd unet-pytorch
 ```
 
-- Dice loss and Cross Entropy loss used for training. [Dice loss implementation](unet/utils/loss.py)
+- Dice loss and Cross Entropy loss used for training. See the [dice loss](unet/utils/loss.py) implementation.
 - `dice_score = 1 - dice_loss` used for evaluation.
 
 ### Dataset
