@@ -1,36 +1,72 @@
-## Implementation of [UNet](https://arxiv.org/abs/1505.04597) in PyTorch
+# [UNet](https://arxiv.org/abs/1505.04597) Implementation using PyTorch
 
 <div align="center">
-<img src="assets/image.jpg" width="45%">
-<img src="assets/mask.gif" width="45%">
+<img src="./assets/img_mask.jpg">
 </div>
 
 ## Getting Started
+
+```
+git clone git@github.com:yakhyo/UNet-pt.git
+cd unet-pytorch
+```
+
+- Dice loss and Cross Entropy loss used for training. See the [dice loss](unet/utils/loss.py) implementation.
+- `dice_score = 1 - dice_loss` used for evaluation.
 
 ### Dataset
 
 [Carvana](https://www.kaggle.com/competitions/carvana-image-masking-challenge/data) dataset is used to train and test
 the model.
-To download the dataset run the `download.sh` file.
 
-**Note:** Please download `kaggle.json` file first from associated kaggle account then save it under the `/home/username/.kaggle/kaggle.json` (in linux)
+```
+bash tools/download.sh
+```
+
+Or simply download the `train_hq.zip` and `train_masks.zip` and extract those folders as shown below:
+
+```
+├── data 
+    ├── images
+         ├── xxx.jpg
+         ├── xxy.jpg
+         ├── xxz.jpg
+          ....
+    ├── masks
+         ├── xxx_mask.gif
+         ├── xxy_maskgif
+         ├── xxz_mask.gif
+```
+
+**Note:** Please download `kaggle.json` file first from associated kaggle account then save it under
+the `/home/username/.kaggle/kaggle.json` (ubuntu)
 
 ### Train
 
-```commandline
-git clone git@github.com:yakhyo/UNet-pt.git
-cd UNet-pt
-python3 train.py
+Training arguments
+
+```
+python -m tools.main -h
+    usage: main.py [-h] [--image_size IMAGE_SIZE] [--save-dir SAVE_DIR] [--epochs EPOCHS] [--batch-size BATCH_SIZE] [--lr LR] [--weights WEIGHTS] [--amp] [--num-classes NUM_CLASSES]
 ```
 
-Epoch Loss Graph after 5 epochs (Not mean, sum):
+Train the model
 
-<div align="center">
-<img src="assets/loss_graph.png" width="70%">
-</div>
+```commandline
+python -m tools.main
+```
 
 ### Inference
 
-```commandline
-python inference.py --input [input_image_path] --output [output_image_path]
+Inference arguments
+
+```
+python inference.py -h
+    usage: inference.py [-h] [--weights WEIGHTS] [--input INPUT] [--output OUTPUT] [--view] [--no-save] [--conf-thresh CONF_THRESH]
+```
+
+Inference an image
+
+```
+python -m tools.inference --weights weights/last.pt --input assets/image.jpg --output result.jpg
 ```
