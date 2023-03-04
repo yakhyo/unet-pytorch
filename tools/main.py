@@ -29,7 +29,7 @@ def strip_optimizers(f: str):
 
 def train(opt, model, device):
     best_score, start_epoch = 0, 0
-    best, last = f"{opt.save_dir}/last.pt", f"{opt.save_dir}/last.pt"
+    best, last = f"{opt.save_dir}/best.pt", f"{opt.save_dir}/last.pt"
 
     # Check pretrained weights
     pretrained = opt.weights.endswith(".pt")

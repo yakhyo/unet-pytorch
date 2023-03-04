@@ -13,6 +13,7 @@ cd unet-pytorch
 
 - Dice loss and Cross Entropy loss used for training. See the [dice loss](unet/utils/loss.py) implementation.
 - `dice_score = 1 - dice_loss` used for evaluation.
+- Model weight provided in `weights` folder
 
 ### Dataset
 
@@ -34,7 +35,7 @@ Or simply download the `train_hq.zip` and `train_masks.zip` and extract those fo
           ....
     ├── masks
          ├── xxx_mask.gif
-         ├── xxy_maskgif
+         ├── xxy_mask.gif
          ├── xxz_mask.gif
 ```
 
