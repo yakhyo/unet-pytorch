@@ -22,11 +22,11 @@ class LossReduction:
 
 class DiceLoss(nn.Module):
     def __init__(
-        self,
-        include_background: Optional[bool] = True,
-        epsilon: Optional[float] = 1e-5,
-        activation: Union[ActivationFunction, str] = ActivationFunction.SOFTMAX,
-        reduction: Union[LossReduction, str] = LossReduction.MEAN,
+            self,
+            include_background: Optional[bool] = True,
+            epsilon: Optional[float] = 1e-5,
+            activation: Union[ActivationFunction, str] = ActivationFunction.SOFTMAX,
+            reduction: Union[LossReduction, str] = LossReduction.MEAN,
     ) -> None:
         super().__init__()
         self.include_background = include_background
@@ -83,11 +83,11 @@ class DiceCELoss(nn.Module):
     """Cross Entropy Dice Loss"""
 
     def __init__(
-        self,
-        include_background: Optional[bool] = True,
-        epsilon: Optional[float] = 1e-5,
-        activation: Union[ActivationFunction, str] = ActivationFunction.SOFTMAX,
-        reduction: Union[LossReduction, str] = LossReduction.MEAN,
+            self,
+            include_background: Optional[bool] = True,
+            epsilon: Optional[float] = 1e-5,
+            activation: Union[ActivationFunction, str] = ActivationFunction.SOFTMAX,
+            reduction: Union[LossReduction, str] = LossReduction.MEAN,
     ) -> None:
         super().__init__()
         self.ce = nn.CrossEntropyLoss(reduction=reduction)
