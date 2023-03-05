@@ -6,7 +6,10 @@ from unet.utils.transforms import Augmentation
 
 
 class Carvana(data.Dataset):
-    def __init__(self, root, image_size=512, transforms=Augmentation(), mask_suffix="_mask"):
+    def __init__(
+            self, root: str, image_size: int = 512, transforms: Augmentation = Augmentation(),
+            mask_suffix: str = "_mask"
+    ) -> None:
         self.root = root
         self.image_size = image_size
         self.mask_suffix = mask_suffix

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Tuple, Union
 
 import torch
 from torch import nn
@@ -23,8 +23,8 @@ class LossReduction:
 class DiceLoss(nn.Module):
     def __init__(
             self,
-            include_background: Optional[bool] = True,
-            epsilon: Optional[float] = 1e-5,
+            include_background: bool = True,
+            epsilon: float = 1e-5,
             activation: Union[ActivationFunction, str] = ActivationFunction.SOFTMAX,
             reduction: Union[LossReduction, str] = LossReduction.MEAN,
     ) -> None:
@@ -74,9 +74,7 @@ class DiceLoss(nn.Module):
             broadcast_shape = list(loss.shape[0:2]) + [1] * (len(inputs.shape) - 2)
             loss = loss.view(broadcast_shape)
         else:
-            raise ValueError(
-                f"Unsupported reduction: {self.reduction}, Supported options are: 'mean', 'sum', 'none'"
-            )
+            raise ValueError(f"Unsupported reduction: {self.reduction}, Supported options are: 'mean', 'sum', 'none'")
 
         return loss
 
@@ -86,8 +84,8 @@ class DiceCELoss(nn.Module):
 
     def __init__(
             self,
-            include_background: Optional[bool] = True,
-            epsilon: Optional[float] = 1e-5,
+            include_background: bool = True,
+            epsilon: float = 1e-5,
             activation: Union[ActivationFunction, str] = ActivationFunction.SOFTMAX,
             reduction: Union[LossReduction, str] = LossReduction.MEAN,
     ) -> None:

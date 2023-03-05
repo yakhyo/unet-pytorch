@@ -1,4 +1,5 @@
 import random
+from typing import Tuple
 
 import numpy as np
 import torch
@@ -8,7 +9,12 @@ from torchvision.transforms import functional as F
 class Augmentation:
     """Standard Augmentation"""
 
-    def __init__(self, hflip_prob=0.5, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+    def __init__(
+            self,
+            hflip_prob: float = 0.5,
+            mean: Tuple[float, float, float] = (0.485, 0.456, 0.406),
+            std: Tuple[float, float, float] = (0.229, 0.224, 0.225),
+    ) -> None:
         transforms = []
         if hflip_prob > 0:
             transforms.append(RandomHorizontalFlip(hflip_prob))
