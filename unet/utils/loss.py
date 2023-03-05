@@ -39,7 +39,7 @@ class DiceLoss(nn.Module):
         if self.activation == ActivationFunction.SOFTMAX:
             inputs = torch.softmax(inputs, dim=1)
         if self.activation == ActivationFunction.SIGMOID:
-            inputs = torch.softmax(inputs, dim=1)
+            inputs = torch.sigmoid(inputs)
 
         targets = F.one_hot(targets, inputs.shape[1]).permute(0, 3, 1, 2)
 
