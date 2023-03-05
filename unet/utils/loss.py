@@ -74,7 +74,9 @@ class DiceLoss(nn.Module):
             broadcast_shape = list(loss.shape[0:2]) + [1] * (len(inputs.shape) - 2)
             loss = loss.view(broadcast_shape)
         else:
-            raise ValueError(f'Unsupported reduction: {self.reduction}, available options are ["mean", "sum", "none"]')
+            raise ValueError(
+                f"Unsupported reduction: {self.reduction}, Supported options are: 'mean', 'sum', 'none'"
+            )
 
         return loss
 
