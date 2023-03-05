@@ -17,13 +17,13 @@ class Conv(nn.Module):
             self,
             in_channels: int,
             out_channels: int,
-            kernel_size: Optional[int] = 1,
-            stride: Optional[int] = 1,
+            kernel_size: int = 1,
+            stride: int = 1,
             padding: Optional[int] = None,
-            groups: Optional[int] = 1,
-            dilation: Optional[int] = 1,
-            bias: Optional[bool] = False,
-            act: Optional[bool] = True,
+            groups: int = 1,
+            dilation: int = 1,
+            bias: bool = False,
+            act: bool = True,
     ) -> None:
         super().__init__()
         self.conv = nn.Conv2d(
@@ -54,13 +54,13 @@ class DoubleConv(nn.Module):
             in_channels: int,
             out_channels: int,
             mid_channels: Optional[int] = None,
-            kernel_size: Optional[int] = 3,
-            stride: Optional[int] = 1,
-            padding: Optional[int] = 1,
-            dilation: Optional[int] = 1,
-            groups: Optional[int] = 1,
-            bias: Optional[bool] = False,
-            act: Optional[bool] = True,
+            kernel_size: int = 3,
+            stride: int = 1,
+            padding: int = 1,
+            dilation: int = 1,
+            groups: int = 1,
+            bias: bool = False,
+            act: bool = True,
     ) -> None:
         super().__init__()
         if not mid_channels:
@@ -166,10 +166,3 @@ class UNet(nn.Module):
         x_ = self.output_conv(x_)
 
         return x_
-
-
-if __name__ == "__main__":
-    model = UNet(in_channels=3, out_channels=2)
-    dummy = torch.randn(1, 3, 512, 512)
-    # print(model(dummy).shape)
-    print(sum(p.numel() for p in model.parameters() if p.requires_grad))
