@@ -69,10 +69,7 @@ class DiceLoss(nn.Module):
         elif self.reduction == LossReduction.SUM:
             loss = torch.sum(loss)
         elif self.reduction == LossReduction.NONE:
-            # If we are not computing voxel-wise loss components at least
-            # make sure a none reduction maintains a broadcastable shape
-            broadcast_shape = list(loss.shape[0:2]) + [1] * (len(inputs.shape) - 2)
-            loss = loss.view(broadcast_shape)
+            pass
         else:
             raise ValueError(f"Unsupported reduction: {self.reduction}, Supported options are: 'mean', 'sum', 'none'")
 
