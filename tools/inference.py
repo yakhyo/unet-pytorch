@@ -92,7 +92,7 @@ def parse_opt():
     parser = argparse.ArgumentParser(description="UNet inference arguments")
     parser.add_argument("--weights", default="./weights/last.pt", help="Path to weight file (default: last.pt)")
     parser.add_argument("--input", type=str, default="./assets/image.jpg", help="Path to input image")
-    parser.add_argument("--output", default="result.jpg", help="Path to save mask image")
+    parser.add_argument("--output", default="mask.jpg", help="Path to save mask image")
     parser.add_argument("--view", action="store_true", help="Visualize image and mask")
     parser.add_argument("--no-save", action="store_true", help="Do not save the output masks")
     parser.add_argument("--conf-thresh", type=float, default=0.5, help="Confidence threshold for mask")

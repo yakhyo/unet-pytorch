@@ -1,7 +1,8 @@
 # [UNet](https://arxiv.org/abs/1505.04597) Implementation using PyTorch
 
 <div align="center">
-<img src="./assets/img_mask.jpg">
+<img src="./assets/img_mask.png">
+
 </div>
 
 ## Getting Started

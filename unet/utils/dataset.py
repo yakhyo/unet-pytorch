@@ -2,13 +2,12 @@ import os
 
 from PIL import Image, ImageOps
 from torch.utils import data
-from unet.utils.transforms import Augmentation
+from unet.utils.misc import Augmentation
 
 
 class Carvana(data.Dataset):
     def __init__(
-            self, root: str, image_size: int = 512, transforms: Augmentation = Augmentation(),
-            mask_suffix: str = "_mask"
+        self, root: str, image_size: int = 512, transforms: Augmentation = Augmentation(), mask_suffix: str = "_mask"
     ) -> None:
         self.root = root
         self.image_size = image_size

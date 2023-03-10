@@ -56,7 +56,6 @@ def train(opt, model, device):
                 logging.info(
                     f"{opt.weights} has been trained for {start_epoch} epochs. Fine-tuning for {opt.epochs} epochs"
                 )
-                opt.epochs += start_epoch
         del ckpt
 
     # Dataset
@@ -92,7 +91,7 @@ def train(opt, model, device):
             epoch_loss += loss.item()
             mem = f"{torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0:.3g}G"  # (GB)
             progress_bar.set_description(
-                ("%12s" * 2 + "%12.4g" * 3) % (f"{epoch + 1}/{opt.epochs}", mem, losses["ce"], losses["dl"], loss)
+                ("%12s" * 2 + "%12.4g" * 3) % (f"{epoch + 1}/{opt.epochs}", mem, losses["ce"], losses["dice"], loss)
             )
 
         dice_score, dice_loss = validate(model, test_loader, device)
