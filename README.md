@@ -8,7 +8,7 @@
 ## Getting Started
 
 ```
-git clone git@github.com:yakhyo/UNet-pt.git
+git clone git@github.com:yakhyo/unet-pytorch.git
 cd unet-pytorch
 ```
 
