@@ -8,9 +8,9 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 
-from unet.models import UNet
-from unet.utils.dataset import Carvana
-from unet.utils.loss import DiceCELoss, DiceLoss
+from models.unet import UNet
+from utils.dataset import Carvana
+from utils.loss import DiceCELoss, DiceLoss
 
 
 def strip_optimizers(f: str):
@@ -59,7 +59,7 @@ def train(opt, model, device):
         del ckpt
 
     # Dataset
-    dataset = Carvana(root="./data", image_size=opt.image_size)
+    dataset = Carvana(root="../karvana_dataset", image_size=opt.image_size)
 
     # Split
     n_val = int(len(dataset) * 0.1)
@@ -133,7 +133,7 @@ def validate(model, dataloader, device, conf_threshold=0.5):
 
 def parse_opt():
     parser = argparse.ArgumentParser(description="UNet training arguments")
-    parser.add_argument("--image_size", type=int, default=512, help="Input image size, default: 512")
+    parser.add_argument("--image-size", type=int, default=512, help="Input image size, default: 512")
     parser.add_argument("--save-dir", type=str, default="weights", help="Directory to save weights")
     parser.add_argument("--epochs", type=int, default=10, help="Number of epochs, default: 5")
     parser.add_argument("--batch-size", type=int, default=12, help="Batch size, default: 12")

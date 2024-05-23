@@ -4,18 +4,12 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from unet.utils.misc import weight_reduce_loss
+from utils.misc import weight_reduce_loss
 
 __all__ = ["DiceLoss", "DiceCELoss"]
 
 
-def dice_loss(
-        inputs: torch.Tensor,
-        targets: torch.Tensor,
-        weight: Optional[torch.Tensor] = None,
-        reduction: str = "none",
-        eps: float = 1e-5,
-) -> torch.Tensor:
+def dice_loss(inputs: torch.Tensor, targets: torch.Tensor, weight: Optional[torch.Tensor] = None, reduction: str = "none", eps: float = 1e-5,) -> torch.Tensor:
     inputs = F.softmax(inputs, dim=1)
     targets = F.one_hot(targets, inputs.shape[1]).permute(0, 3, 1, 2)
 
