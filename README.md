@@ -24,8 +24,7 @@ git clone git@github.com:yakhyo/unet-pytorch.git
 cd unet-pytorch
 ```
 
-- [x] Dice loss and Cross Entropy loss used for training. See the [dice loss](unet/utils/loss.py) implementation.
-- `dice_score = 1 - dice_loss` used for evaluation.
+- [x] Dice loss and Cross Entropy loss used for training. See the [dice loss](unet/utils/loss.py) implementation. `dice_score = 1 - dice_loss` used for evaluation.
 - [x] Model weight provided in `weights` folder. Weights saved in f16 (~60MB).
 - [x] [Demo Jupyter Notebook](demo.ipynb).
 
