@@ -3,15 +3,15 @@
 <div style="display: flex; justify-content: space-around;">
         <div>
             <p>Input image</p>
-            <img src="assets/image.jpg" style="width: 280px;">
+            <img src="assets/image.jpg" style="width: 250px;">
         </div>
         <div>
             <p>Predicted mask</p>
-            <img src="assets/image_mask.png" style="width: 280px;">
+            <img src="assets/image_mask.png" style="width: 250px;">
         </div>
         <div>
             <p>Image and mask overlay</p>
-            <img src="assets/image_overlay.png" style="width: 280px;">
+            <img src="assets/image_overlay.png" style="width: 250px;">
         </div>
     </div>
 
