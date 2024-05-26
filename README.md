@@ -1,19 +1,21 @@
 # [UNet](https://arxiv.org/abs/1505.04597) Implementation using PyTorch | Car Segmentation
 
-<div style="display: flex; justify-content: space-around;">
-        <div>
-            <p>Input image</p>
-            <img src="assets/image.jpg" style="width: 250px;">
-        </div>
-        <div>
-            <p>Predicted mask</p>
-            <img src="assets/image_mask.png" style="width: 250px;">
-        </div>
-        <div>
-            <p>Image and mask overlay</p>
-            <img src="assets/image_overlay.png" style="width: 250px;">
-        </div>
-    </div>
+<table>
+  <tr>
+    <td style="text-align: center;">
+      <p>Input image</p>
+      <img src="assets/image.jpg" alt="Input image" width="250">
+    </td>
+    <td style="text-align: center;">
+      <p>Predicted mask</p>
+      <img src="assets/image_mask.png" alt="Predicted mask" width="250">
+    </td>
+    <td style="text-align: center;">
+      <p>Image and mask overlay</p>
+      <img src="assets/image_overlay.png" alt="Image and mask overlay" width="250">
+    </td>
+  </tr>
+</table>
 
 ## Getting Started
 
