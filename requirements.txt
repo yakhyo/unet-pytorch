@@ -1,16 +1,10 @@
-# Usage: pip install -r requirements.txt
+# pip install -r requirements.txt
 
-# Base
-matplotlib>=3.7.1
-numpy>=1.24.2
-opencv-python>=4.7.0.72
-Pillow>=9.4.0
-torch>=1.13.1
-torchvision>=0.13.1
-tqdm>=4.65.0
-
-# Extra
-pre-commit
-flake8
-ufmt
-pydocstyle
+matplotlib>=3.8.4
+numpy>=1.26.4
+opencv-python>=4.9.0.80
+Pillow>=10.3.0
+torch>=2.2.2
+torchvision>=0.17.2
+tqdm>=4.66.2
+torchsummary>=1.5.1

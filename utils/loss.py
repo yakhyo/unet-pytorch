@@ -1,20 +1,39 @@
 from typing import Optional
 
+
 import torch
-from torch import nn
+from torch import nn, Tensor
 from torch.nn import functional as F
 
-from utils.misc import weight_reduce_loss
+from utils.general import weight_reduce_loss, LossReduction
 
 __all__ = ["DiceLoss", "DiceCELoss"]
 
 
-def dice_loss(inputs: torch.Tensor, targets: torch.Tensor, weight: Optional[torch.Tensor] = None, reduction: str = "none", eps: float = 1e-5,) -> torch.Tensor:
+def dice_loss(
+    inputs: Tensor,
+    targets: Tensor,
+    weight: Optional[Tensor] = None,
+    reduction: LossReduction = "none",
+    eps: float = 1e-5
+) -> Tensor:
+    """Dice loss calculation function
+    Args:
+        inputs: input tensor
+        targets: target tensor
+        weight: loss weight
+        reduction: reduction mode
+        eps: epsilon to avoid zero division
+    Returns:
+        torch.Tensor
+    """
     inputs = F.softmax(inputs, dim=1)
     targets = F.one_hot(targets, inputs.shape[1]).permute(0, 3, 1, 2)
 
     if inputs.shape != targets.shape:
-        raise AssertionError(f"Ground truth has different shape ({targets.shape}) from input ({inputs.shape})")
+        raise AssertionError(
+            f"Mismatch in shapes: expected inputs of shape {targets.shape}, but got {inputs.shape}."
+        )
 
     # flatten prediction and label tensors
     inputs = inputs.flatten()
@@ -36,48 +55,55 @@ def dice_loss(inputs: torch.Tensor, targets: torch.Tensor, weight: Optional[torc
 
 
 class DiceLoss(nn.Module):
-    def __init__(
-            self,
-            reduction: str = "mean",
-            loss_weight: Optional[float] = 1.0,
-            eps: float = 1e-5,
-    ):
+    """Dice Loss"""
+
+    def __init__(self, reduction: LossReduction = "mean", loss_weight: Optional[float] = 1.0, eps: float = 1e-5) -> None:
         super().__init__()
         self.reduction = reduction
         self.loss_weight = loss_weight
         self.eps = eps
 
-    def forward(
-            self,
-            inputs: torch.Tensor,
-            targets: torch.Tensor,
-            weight: Optional[torch.Tensor] = None,
-    ):
-        loss = self.loss_weight * dice_loss(inputs, targets, weight=weight, reduction=self.reduction, eps=self.eps)
+    def forward(self, inputs: Tensor, targets: Tensor, weight: Optional[Tensor] = None) -> Tensor:
+        loss = self.loss_weight * dice_loss(
+            inputs,
+            targets,
+            weight=weight,
+            reduction=self.reduction,
+            eps=self.eps,
+        )
 
         return loss
 
 
 class DiceCELoss(nn.Module):
+    """Dice and Cross Entropy Loss"""
+
     def __init__(
-            self,
-            reduction: str = "mean",
-            dice_weight: float = 1.0,
-            ce_weight: float = 1.0,
-            eps: float = 1e-5,
-    ):
+        self,
+        reduction: LossReduction = "mean",
+        dice_weight: float = 1.0,
+        ce_weight: float = 1.0,
+        eps: float = 1e-5,
+    ) -> None:
         super().__init__()
         self.reduction = reduction
         self.dice_weight = dice_weight
         self.ce_weight = ce_weight
         self.eps = eps
 
-    def forward(self, inputs: torch.Tensor, targets: torch.Tensor, weight: Optional[torch.Tensor] = None):
+    def forward(self, inputs: Tensor, targets: Tensor, weight: Optional[Tensor] = None) -> Tensor:
         # calculate dice loss
-        dice = dice_loss(inputs, targets, weight=weight, reduction=self.reduction, eps=self.eps)
+        dice_loss_ = dice_loss(
+            inputs,
+            targets,
+            weight=weight,
+            reduction=self.reduction,
+            eps=self.eps,
+        )
         # calculate cross entropy loss
-        ce = F.cross_entropy(inputs, targets, weight=weight, reduction=self.reduction)
-        # accumulate loss according to given weights
-        loss = self.dice_weight * dice + ce * self.ce_weight
+        cross_entropy = F.cross_entropy(inputs, targets, weight=weight, reduction=self.reduction)
 
-        return loss, {"ce": ce * self.ce_weight, "dice": self.dice_weight * dice}
+        # accumulate loss according to given weights
+        loss = self.dice_weight * dice_loss_ + cross_entropy * self.ce_weight
+
+        return loss

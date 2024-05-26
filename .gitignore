@@ -5,7 +5,9 @@ log
 logs
 .idea
 .vscode
-/data
+data/train_masks
+data/train_images
+weights/checkpoint.pth
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

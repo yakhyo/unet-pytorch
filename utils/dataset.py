@@ -1,24 +1,26 @@
 import os
-
+import random
+import numpy as np
 from PIL import Image, ImageOps
+
+import torch
 from torch.utils import data
-from utils.misc import Augmentation
+
+from utils.general import Augmentation
 
 
 class Carvana(data.Dataset):
-    def __init__(
-            self,
-            root: str,
-            image_size: int = 512,
-            transforms: Augmentation = Augmentation(),
-            mask_suffix: str = "_mask"
-    ) -> None:
+    def __init__(self, root: str, scale: float = 0.5, transforms: Augmentation = Augmentation()) -> None:
         self.root = root
-        self.image_size = image_size
-        self.mask_suffix = mask_suffix
-        self.filenames = [os.path.splitext(filename)[0] for filename in os.listdir(os.path.join(self.root, "images"))]
+        self.scale = scale
+
+        self.images_dir = os.path.join(self.root, "train_images")
+        self.labels_dir = os.path.join(self.root, "train_masks")
+        self.filenames = [os.path.splitext(filename)[0] for filename in os.listdir(self.images_dir)]
+
         if not self.filenames:
             raise FileNotFoundError(f"Files not found in {root}")
+
         self.transforms = transforms
 
     def __len__(self):
@@ -28,17 +30,17 @@ class Carvana(data.Dataset):
         filename = self.filenames[idx]
 
         # image path
-        image_path = os.path.join(self.root, f"images{os.sep}{filename}.jpg")
-        mask_path = os.path.join(self.root, f"masks{os.sep}{filename + self.mask_suffix}.gif")
+        image_path = os.path.join(self.images_dir, f"{filename}.jpg")
+        mask_path = os.path.join(self.labels_dir, f"{filename}.png")
 
         # image load
         image = Image.open(image_path)
         mask = Image.open(mask_path)
 
         # resize
-        image, mask = self.resize_pil(image, mask, image_size=self.image_size)
+        image, mask = self.preprocess(image, mask, scale=self.scale)
 
-        assert image.size == mask.size, f"`image`: {image.size} and `mask`: {mask.size} are not the same"
+        assert (image.size == mask.size), f"`image`: {image.size} and `mask`: {mask.size} are not the same"
 
         if self.transforms is not None:
             image, mask = self.transforms(image, mask)
@@ -46,22 +48,13 @@ class Carvana(data.Dataset):
         return image, mask
 
     @staticmethod
-    def resize_pil(image, mask, image_size):
+    def preprocess(image, mask, scale):
         w, h = image.size
-        scale = min(image_size / w, image_size / h)
+        newW, newH = int(scale * w), int(scale * h)
 
-        # resize image
-        image = image.resize((int(w * scale), int(h * scale)), resample=Image.BICUBIC)
-        mask = mask.resize((int(w * scale), int(h * scale)), resample=Image.NEAREST)
-
-        # pad size
-        delta_w = image_size - int(w * scale)
-        delta_h = image_size - int(h * scale)
-        top, bottom = delta_h // 2, delta_h - (delta_h // 2)
-        left, right = delta_w // 2, delta_w - (delta_w // 2)
-
-        # pad image
-        image = ImageOps.expand(image, (left, top, right, bottom))
-        mask = ImageOps.expand(mask, (left, top, right, bottom))
+        # Resizing the image using BICUBIC interpolation for smooth results
+        image = image.resize((newW, newH), Image.BICUBIC)
+        # Resizing the mask using NEAREST interpolation to maintain label integrity
+        mask = mask.resize((newW, newH), Image.NEAREST)
 
         return image, mask

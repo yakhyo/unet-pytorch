@@ -1,129 +1,194 @@
-import argparse
 import os
-
-import matplotlib.pyplot as plt
+import cv2
 import numpy as np
+from PIL import Image, ImageEnhance
+
 import torch
+import torchvision.transforms.functional as F
 
-from PIL import Image, ImageOps
-from unet.models import UNet
+from models.unet import UNet
 
 
-def preprocess(image, is_mask):
-    """Preprocess image and mask"""
-    img_ndarray = np.asarray(image)
-    if not is_mask:
-        if img_ndarray.ndim == 2:
-            img_ndarray = img_ndarray[np.newaxis, ...]
+class PILToTensor:
+    """Convert PIL image to torch tensor"""
+
+    def __call__(self, image):
+        image = F.pil_to_tensor(image)
+        return image
+
+
+class ToDtype:
+    def __init__(self, dtype, scale=True):
+        self.dtype = dtype
+        self.scale = scale
+
+    def __call__(self, image):
+        if self.scale:
+            image = F.convert_image_dtype(image, self.dtype)  # Scale the image to [0, 1]
         else:
-            img_ndarray = img_ndarray.transpose((2, 0, 1))
-
-        img_ndarray = img_ndarray / 255
-
-    return img_ndarray
+            image = image.to(dtype=self.dtype)
+        return image
 
 
-def plot_img_and_mask(img, mask):
-    """Display image and mask"""
-    classes = mask.shape[0] if len(mask.shape) > 2 else 1
-    fig, ax = plt.subplots(1, classes + 1)
-    ax[0].set_title("Input image")
-    ax[0].imshow(img)
-    if classes > 1:
-        for i in range(classes):
-            ax[i + 1].set_title(f"Output mask (class {i + 1})")
-            ax[i + 1].imshow(mask[1, :, :])
-    else:
-        ax[1].set_title("Output mask")
-        ax[1].imshow(mask)
-    plt.xticks([]), plt.yticks([])
-    plt.show()
+class Normalize:
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, image):
+        image = F.normalize(image, mean=self.mean, std=self.std)
+        return image
 
 
-def resize(image, image_size=512):
-    """Letter box resizing"""
+class Compose:
+    """Composing all transforms"""
+
+    def __init__(self, transforms):
+        self.transforms = transforms
+
+    def __call__(self, image):
+        for t in self.transforms:
+            image = t(image)
+        return image
+
+
+class InferenceAugmentation:
+    """Inference Augmentation"""
+
+    def __init__(self, scale) -> None:
+        self.scale = scale
+        self.transforms = Compose([
+            PILToTensor(),
+            ToDtype(dtype=torch.float, scale=True),
+            Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+        ])
+
+    def __call__(self, image):
+        image = self.resize(image)
+        return self.transforms(image)
+
+    def resize(self, image):
+        w, h = image.size
+        newW, newH = int(self.scale * w), int(self.scale * h)
+        image = image.resize((newW, newH), Image.BICUBIC)
+        return image
+
+
+def resize(image, scale):
     w, h = image.size
-    scale = min(image_size / w, image_size / h)
-
-    # resize image
-    image = image.resize((int(w * scale), int(h * scale)))
-
-    # pad size
-    delta_w = image_size - int(w * scale)
-    delta_h = image_size - int(h * scale)
-    top, bottom = delta_h // 2, delta_h - (delta_h // 2)
-    left, right = delta_w // 2, delta_w - (delta_w // 2)
-
-    # pad image
-    image = ImageOps.expand(image, (left, top, right, bottom))
-
+    newW, newH = int(scale * w), int(scale * h)
+    image = image.resize((newW, newH), Image.BICUBIC)
     return image
 
 
-def predict(model, image, device, conf_thresh=0.5):
-    model.eval()
-    model.to(device)
-
-    # Preprocess
-    image = resize(image)
-    image = torch.from_numpy(preprocess(image, is_mask=False))
-    image = image.unsqueeze(0)
-    image = image.to(device, dtype=torch.float32)
+def inference(model, device, params):
+    # initialize inference augmentation
+    preprocess = InferenceAugmentation(scale=params.scale)
+    # read image
+    input_image = Image.open(params.image_path).convert("RGB")
+    # preprocess
+    input_tensor = preprocess(input_image)
+    # add batch
+    input_batch = input_tensor.unsqueeze(0)
+    # move to device
+    input_batch = input_batch.to(device)
 
     with torch.no_grad():
-        output = model(image).cpu()
-        if model.out_channels > 1:
-            mask = output.argmax(dim=1)
-        else:
-            mask = torch.sigmoid(output) > conf_thresh
+        output = model(input_batch)[0]
 
-    return mask[0].long().squeeze().numpy()
+    output_predictions = output.argmax(0).cpu().numpy()
+
+    return output_predictions
 
 
-def mask_to_image(mask: np.ndarray):
-    """Convert mask to image"""
-    if mask.ndim == 2:
-        return Image.fromarray((mask * 255).astype(np.uint8))
-    elif mask.ndim == 3:
-        return Image.fromarray((np.argmax(mask, axis=0) * 255 / mask.shape[0]).astype(np.uint8))
+color_palette = [
+    (0, 0, 0),       # Color for Background
+    (255, 0, 0),     # Color for Car
+]
 
 
-def parse_opt():
-    parser = argparse.ArgumentParser(description="UNet inference arguments")
-    parser.add_argument("--weights", default="./weights/last.pt", help="Path to weight file (default: last.pt)")
-    parser.add_argument("--input", type=str, default="./assets/image.jpg", help="Path to input image")
-    parser.add_argument("--output", default="output.jpg", help="Path to save mask image")
-    parser.add_argument("--view", action="store_true", help="Visualize image and mask")
-    parser.add_argument("--no-save", action="store_true", help="Do not save the output masks")
-    parser.add_argument("--conf-thresh", type=float, default=0.5, help="Confidence threshold for mask")
+def visualize_segmentation_map(image, segmentation_mask):
+    # Create numpy arrays for image and segmentation mask
+    image = np.array(image).copy().astype(np.uint8)
+    segmentation_mask = segmentation_mask.copy().astype(np.uint8)
 
-    return parser.parse_args()
+    # Create an RGB image with the same height and width as the segmentation
+    h, w = segmentation_mask.shape
+    colored_segmentation = np.zeros((h, w, 3), dtype=np.uint8)
+
+    num_classes = np.max(segmentation_mask)
+
+    # Map each class to its respective color
+    for class_id, color in enumerate(color_palette):
+        colored_segmentation[segmentation_mask == class_id] = color
+
+    # Convert image to BGR format for blending
+    bgr_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+    # Blend the image with the segmentation mask
+    blended_image = cv2.addWeighted(bgr_image, 0.6, colored_segmentation, 0.4, 0)
+
+    return blended_image, colored_segmentation
 
 
-def main(opt):
+def parse_args():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Image Segmentation Inference")
+    parser.add_argument("--model-path", type=str, default="./weights/last.pt", help="Path to the model weights")
+    parser.add_argument("--image-path", type=str, default="assets/image.jpg", help="Path to the input image")
+    parser.add_argument("--scale", type=float, default=0.5, help="Scale factor for resizing the image")
+    parser.add_argument("--save-overlay", action="store_true", help="Save the overlay image if this flag is set")
+
+    args = parser.parse_args()
+
+    return args
+
+
+def load_model(params, device):
+    # Initialize the model
+    model = UNet(in_channels=3, num_classes=2)
+
+    # Load weights and convert to float32 because weights stored in f16
+    state_dict = torch.load(params.model_path, map_location=device)
+    for key in state_dict.keys():
+        state_dict[key] = state_dict[key].float()
+
+    model.load_state_dict(state_dict)
+    model.to(device)
+    model.eval()
+
+    return model
+
+
+def main(params):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if os.path.exists(opt.weights):
-        ckpt = torch.load(opt.weights, map_location=device)
-    else:
-        raise AssertionError(f"Trained weights not found in {opt.weights}")
-    # Initialize model and load checkpoint
-    model = UNet(in_channels=3, out_channels=2)
-    model.load_state_dict(ckpt["model"].float().state_dict())
 
-    # Load & Inference
-    image = Image.open(opt.input)
-    output = predict(model=model, image=image, device=device, conf_thresh=opt.conf_thresh)
+    model = load_model(params, device)
 
-    # Convert mask to image
-    result = mask_to_image(output)
-    result.save(opt.output)
+    # inference
+    segmentation_map = inference(model, device, params=params)
 
-    # Visualize
-    if opt.view:
-        image = resize(image)
-        plot_img_and_mask(image, output)
+    filename = os.path.basename(params.image_path)
+    dirname = os.path.dirname(params.image_path)
+
+    # save segmentation mask
+    segmentation_image = Image.fromarray((segmentation_map * 255).astype(np.uint8))
+    segmentation_image.save(f"./assets/{filename[:-4]}_mask.png")
+
+    # save overlay mask on input image and
+    if params.save_overlay:
+        print("Saving the overlay image.")
+        image = Image.open(params.image_path).convert("RGB")
+        image = resize(image, params.scale)
+
+        # returns overlayed image and colored mask
+        overlayed_image, colored_class_map = visualize_segmentation_map(image, segmentation_map)
+
+        cv2.imwrite(f"./assets/{filename[:-4]}_mask_color.png", colored_class_map)
+        cv2.imwrite(f"./assets/{filename[:-4]}_overlay.png", overlayed_image, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
 
 
 if __name__ == "__main__":
-    params = parse_opt()
-    main(params)
+    args = parse_args()
+    main(params=args)
