@@ -1,5 +1,7 @@
 # [UNet](https://arxiv.org/abs/1505.04597) Implementation using PyTorch | Car Segmentation
 
+![Downloads](https://img.shields.io/github/downloads/yakhyo/unet-pytorch/total)
+
 <table>
   <tr>
     <td style="text-align: center;">
