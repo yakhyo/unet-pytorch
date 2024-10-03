@@ -1,6 +1,6 @@
 # [UNet](https://arxiv.org/abs/1505.04597) Implementation using PyTorch | Car Segmentation
 
-![Downloads](https://img.shields.io/github/downloads/yakhyo/unet-pytorch/total)
+![Downloads](https://img.shields.io/github/downloads/yakhyo/unet-pytorch/total) [![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/yakhyo/unet-pytorch)
 
 <table>
   <tr>
